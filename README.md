@@ -72,11 +72,7 @@ It displays key performance metrics and five required visualizations using Plotl
 
 ## Running the Project
 
-1. **Run The Notebook (THIS MUST BE DONE FIRST)**
-
-```bash
-assignment1.ipynb
-```
+1. **Open and Run The Notebook assignment1.ipynb (THIS MUST BE DONE FIRST)**
 
 2. **Run The Dashboard**
 
