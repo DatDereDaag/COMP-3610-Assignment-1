@@ -72,7 +72,7 @@ It displays key performance metrics and five required visualizations using Plotl
 
 ## Running the Project
 
-1. **Run The Notebook**
+1. **Run The Notebook (THIS MUST BE DONE FIRST)**
 
 ```bash
 assignment1.ipynb
