@@ -26,6 +26,8 @@ st.markdown("""
     This dashboard gives key insights into NYC Yellow Taxi trends for January 2024 with patterns being found in 
     common pickup zones, average fares and the distances of trips for the month. The filters in this dashboard allows
     you to explore trip behaviour by date, time and payment type as well.
+            
+    Note: This dashboard uses a sample of 100k records from the dataset
 """)
 
 #Below is the load function that used streamlit's cache_data decorator
@@ -46,6 +48,9 @@ def load_data():
     except FileNotFoundError:
         st.error("Can't find the taxi zone data, please run the notebook first to download the csv file for the zones")
         st.stop()
+
+        #Only use a portion of the dataset to avoid crashes
+    taxi_trip_df = taxi_trip_df.sample(n=min(100000, len(taxi_trip_df)), seed=42)
 
     #------------------------------
     # Below we clean the data again before using it
@@ -227,10 +232,6 @@ else:
 
     # Create a DuckDB connection
     con = duckdb.connect()
-
-
-    #Only use a portion of the dataset to avoid crashes
-    filtered_trips = filtered_trips.sample(n=min(100000, len(filtered_trips)), seed=42)
 
     #Register dataframes
     con.register("taxi_trips", filtered_trips)
