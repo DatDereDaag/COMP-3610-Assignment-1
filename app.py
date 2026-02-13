@@ -47,72 +47,71 @@ def load_data():
         st.error("Can't find the taxi zone data, please run the notebook first to download the csv file for the zones")
         st.stop()
 
+    #------------------------------
+    # Below we clean the data again before using it
+    #------------------------------
+
+    #We will now sanitize the data for preparation for analysis
+
+    #First we clean up any rows with null values in important columns such as pick and dropoff times, locations, fares and trips
+
+    important_columns = [
+        "tpep_pickup_datetime",
+        "tpep_dropoff_datetime",
+        "PULocationID",
+        "DOLocationID",
+        "fare_amount",
+        "trip_distance"
+    ]
+
+    taxi_trip_df = taxi_trip_df.drop_nulls(subset=important_columns)
+
+    #We now clean the data by removing any rows where the trip has zero or negative distance, negative fares, or fares exceeding $500
+
+    taxi_trip_df = taxi_trip_df.filter(
+        pl.col("trip_distance") > 0,
+        pl.col("fare_amount") >= 0,
+        pl.col("fare_amount") <= 500
+    )
+
+    #For our last bit of sanitization we then remove rows where dropoff time is before pickup time
+
+    taxi_trip_df = taxi_trip_df.filter(
+        pl.col("tpep_dropoff_datetime") >= pl.col("tpep_pickup_datetime")
+    )
+
+
+    #Next we do feature engineering to add our own derived columns to the dataset
+
+    #Adding trip duration in minutes
+    taxi_trip_df = taxi_trip_df.with_columns([
+        ((pl.col("tpep_dropoff_datetime") - pl.col("tpep_pickup_datetime"))
+        .dt.total_seconds() / 60)
+        .alias("trip_duration_minutes")
+    ])
+
+    #Adding trip speed in mph
+    taxi_trip_df = taxi_trip_df.with_columns([
+        pl.when(pl.col("trip_duration_minutes") > 0)
+        .then(pl.col("trip_distance") / (pl.col("trip_duration_minutes") / 60))
+        .otherwise(None)
+        .alias("trip_speed_mph")
+    ])
+
+    #Adding pickup hour
+    taxi_trip_df = taxi_trip_df.with_columns([
+        pl.col('tpep_pickup_datetime').dt.hour().alias('pickup_hour')
+    ])
+
+    #Adding pickup day of week
+    taxi_trip_df = taxi_trip_df.with_columns([
+        pl.col('tpep_pickup_datetime').dt.strftime("%A").alias('pickup_day_of_week')
+    ])
+
     return taxi_trip_df, taxi_zone_df
 
 #We then load the cleaned taxi trip data into a polars dataframe along with the base zone data
 taxi_trip_df, taxi_zone_df = load_data()
-        
-#------------------------------
-# Below we clean the data again before using it
-#------------------------------
-
-#We will now sanitize the data for preparation for analysis
-
-#First we clean up any rows with null values in important columns such as pick and dropoff times, locations, fares and trips
-
-important_columns = [
-    "tpep_pickup_datetime",
-    "tpep_dropoff_datetime",
-    "PULocationID",
-    "DOLocationID",
-    "fare_amount",
-    "trip_distance"
-]
-
-taxi_trip_df = taxi_trip_df.drop_nulls(subset=important_columns)
-
-#We now clean the data by removing any rows where the trip has zero or negative distance, negative fares, or fares exceeding $500
-
-taxi_trip_df = taxi_trip_df.filter(
-    pl.col("trip_distance") > 0,
-    pl.col("fare_amount") >= 0,
-    pl.col("fare_amount") <= 500
-)
-
-#For our last bit of sanitization we then remove rows where dropoff time is before pickup time
-
-taxi_trip_df = taxi_trip_df.filter(
-    pl.col("tpep_dropoff_datetime") >= pl.col("tpep_pickup_datetime")
-)
-
-
-#Next we do feature engineering to add our own derived columns to the dataset
-
-#Adding trip duration in minutes
-taxi_trip_df = taxi_trip_df.with_columns([
-    ((pl.col("tpep_dropoff_datetime") - pl.col("tpep_pickup_datetime"))
-     .dt.total_seconds() / 60)
-     .alias("trip_duration_minutes")
-])
-
-#Adding trip speed in mph
-taxi_trip_df = taxi_trip_df.with_columns([
-    pl.when(pl.col("trip_duration_minutes") > 0)
-      .then(pl.col("trip_distance") / (pl.col("trip_duration_minutes") / 60))
-      .otherwise(None)
-      .alias("trip_speed_mph")
-])
-
-#Adding pickup hour
-taxi_trip_df = taxi_trip_df.with_columns([
-    pl.col('tpep_pickup_datetime').dt.hour().alias('pickup_hour')
-])
-
-#Adding pickup day of week
-taxi_trip_df = taxi_trip_df.with_columns([
-    pl.col('tpep_pickup_datetime').dt.strftime("%A").alias('pickup_day_of_week')
-])
-
 
 # -----------------------------
 # Below we set up the interactive filters
@@ -228,6 +227,10 @@ else:
 
     # Create a DuckDB connection
     con = duckdb.connect()
+
+
+    #Only use a portion of the dataset to avoid crashes
+    filtered_trips = filtered_trips.sample(n=min(100000, len(filtered_trips)), seed=42)
 
     #Register dataframes
     con.register("taxi_trips", filtered_trips)
