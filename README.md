@@ -2,6 +2,8 @@
 
 ## Deployed Dashboard URL
 
+https://datderedaag-comp-3610-assignment-1-app-4exz4d.streamlit.app/
+
 ## Overview
 
 This project analyzes and visualizes NYC Yellow Taxi trip data for January 2024 using a data processing notebook and an interactive Streamlit dashboard.
